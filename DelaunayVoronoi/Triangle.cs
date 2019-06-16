@@ -1,5 +1,6 @@
-﻿using System.Collections.Generic;
+﻿using System;
 using System.Linq;
+using Point = System.Drawing.PointF;
 
 namespace DelaunayVoronoi
 {
@@ -8,22 +9,6 @@ namespace DelaunayVoronoi
         public Point[] Vertices { get; } = new Point[3];
         public Point Circumcenter { get; private set; }
         public double RadiusSquared;
-
-        public IEnumerable<Triangle> TrianglesWithSharedEdge {
-            get {
-                var neighbors = new HashSet<Triangle>();
-                foreach (var vertex in Vertices)
-                {
-                    var trianglesWithSharedEdge = vertex.AdjacentTriangles.Where(o =>
-                    {
-                        return o != this && SharesEdgeWith(o);
-                    });
-                    neighbors.UnionWith(trianglesWithSharedEdge);
-                }
-
-                return neighbors;
-            }
-        }
 
         public Triangle(Point point1, Point point2, Point point3)
         {
@@ -40,9 +25,6 @@ namespace DelaunayVoronoi
                 Vertices[2] = point3;
             }
 
-            Vertices[0].AdjacentTriangles.Add(this);
-            Vertices[1].AdjacentTriangles.Add(this);
-            Vertices[2].AdjacentTriangles.Add(this);
             UpdateCircumcircle();
         }
 
@@ -57,13 +39,13 @@ namespace DelaunayVoronoi
             var dB = p1.X * p1.X + p1.Y * p1.Y;
             var dC = p2.X * p2.X + p2.Y * p2.Y;
 
-            var aux1 = (dA * (p2.Y - p1.Y) + dB * (p0.Y - p2.Y) + dC * (p1.Y - p0.Y));
+            var aux1 = dA * (p2.Y - p1.Y) + dB * (p0.Y - p2.Y) + dC * (p1.Y - p0.Y);
             var aux2 = -(dA * (p2.X - p1.X) + dB * (p0.X - p2.X) + dC * (p1.X - p0.X));
-            var div = (2 * (p0.X * (p2.Y - p1.Y) + p1.X * (p0.Y - p2.Y) + p2.X * (p1.Y - p0.Y)));
+            var div = 2 * (p0.X * (p2.Y - p1.Y) + p1.X * (p0.Y - p2.Y) + p2.X * (p1.Y - p0.Y));
 
-            if (div == 0)
+            if (Math.Abs(div) < 10e-5)
             {
-                throw new System.Exception();
+                throw new Exception();
             }
 
             var center = new Point(aux1 / div, aux2 / div);
@@ -80,15 +62,15 @@ namespace DelaunayVoronoi
 
         public bool SharesEdgeWith(Triangle triangle)
         {
-            var sharedVertices = Vertices.Where(o => triangle.Vertices.Contains(o)).Count();
+            var sharedVertices = Vertices.Count(v => triangle.Vertices.Contains(v));
             return sharedVertices == 2;
         }
 
         public bool IsPointInsideCircumcircle(Point point)
         {
-            var d_squared = (point.X - Circumcenter.X) * (point.X - Circumcenter.X) +
+            var dSquared = (point.X - Circumcenter.X) * (point.X - Circumcenter.X) +
                 (point.Y - Circumcenter.Y) * (point.Y - Circumcenter.Y);
-            return d_squared < RadiusSquared;
+            return dSquared < RadiusSquared;
         }
     }
 }
